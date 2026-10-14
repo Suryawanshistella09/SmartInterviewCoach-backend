@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,10 +15,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final JwtService jwtService;
 
     public JwtAuthenticationFilter(JwtService jwtService) {
@@ -34,8 +38,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         System.out.println("Request: " + request.getMethod() + " " + request.getRequestURI());
 
         String authHeader = request.getHeader("Authorization");
-
-        System.out.println("Authorization Header: " + authHeader);
+        if ((authHeader == null || !authHeader.startsWith("Bearer "))
+                && request.getRequestURI().startsWith("/api/coding/")) {
+            logger.warn("Coding execution request has no Bearer authorization header");
+        }
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 
@@ -56,6 +62,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = jwtService.extractEmail(token);
                 String role = jwtService.extractRole(token);
 
+                if (email == null || email.isBlank() || role == null || role.isBlank()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                role = role.trim().toUpperCase(Locale.ROOT);
+                if (role.startsWith("ROLE_")) {
+                    role = role.substring("ROLE_".length());
+                }
+
                 SimpleGrantedAuthority authority =
                         new SimpleGrantedAuthority("ROLE_" + role);
 
@@ -68,19 +83,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext()
                         .setAuthentication(authentication);
-
-                System.out.println("JWT authenticated user: " + email);
-                System.out.println("Role: " + role);
+                if (request.getRequestURI().startsWith("/api/coding/")) {
+                    logger.info("Authenticated coding execution request with role ROLE_{}", role);
+                }
 
             } else {
 
-                System.out.println("JWT token is NOT valid.");
+                logger.warn("JWT authentication rejected for {} {}: token invalid or expired",
+                        request.getMethod(), request.getRequestURI());
             }
 
         } catch (Exception e) {
 
-            System.out.println("Invalid JWT token.");
-            System.out.println("Error: " + e.getMessage());
+            logger.warn("JWT authentication failed for {} {} ({})",
+                    request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
         }
 
         filterChain.doFilter(request, response);

@@ -1,9 +1,11 @@
 package com.example.interviewcoach.service;
+
 import com.example.interviewcoach.security.JwtService;
 import com.example.interviewcoach.entity.User;
 import com.example.interviewcoach.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -62,5 +64,24 @@ public class UserService {
         );
 
         return token;
+    }
+
+    // GET ALL USERS
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // DELETE USER
+    public String deleteUser(Long id) {
+
+        // Check whether user exists
+        if (!userRepository.existsById(id)) {
+            return "User not found";
+        }
+
+        // Delete user
+        userRepository.deleteById(id);
+
+        return "User deleted successfully";
     }
 }

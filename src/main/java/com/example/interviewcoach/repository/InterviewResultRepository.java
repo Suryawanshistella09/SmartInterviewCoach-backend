@@ -9,4 +9,6 @@ public interface InterviewResultRepository
         extends JpaRepository<InterviewResult, Long> {
 
     List<InterviewResult> findByUserEmail(String userEmail);
+
+    long countByInterviewType(String interviewType);
 }

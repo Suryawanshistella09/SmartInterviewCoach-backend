@@ -4,7 +4,10 @@ import com.example.interviewcoach.entity.InterviewResult;
 import com.example.interviewcoach.service.InterviewResultService;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -28,7 +31,22 @@ public class InterviewResultController {
 
     @PostMapping
     public ResponseEntity<InterviewResult> saveResult(
-            @RequestBody InterviewResult result) {
+            @RequestBody InterviewResult result,
+            Authentication authentication) {
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getName() == null
+                || authentication.getName().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Authenticated user is required"
+            );
+        }
+
+        // The JWT principal is authoritative; never accept another user's email
+        // from the request body as the owner of a saved result.
+        result.setUserEmail(authentication.getName());
 
         InterviewResult savedResult =
                 interviewResultService.saveResult(result);
@@ -43,7 +61,18 @@ public class InterviewResultController {
 
     @GetMapping("/user/{email}")
     public ResponseEntity<List<InterviewResult>> getUserResults(
-            @PathVariable String email) {
+            @PathVariable String email,
+            Authentication authentication
+    ) {
+
+        if (authentication == null
+                || authentication.getName() == null
+                || !email.equalsIgnoreCase(authentication.getName())) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only view your own interview results"
+            );
+        }
 
         List<InterviewResult> results =
                 interviewResultService.getResultsByUser(email);

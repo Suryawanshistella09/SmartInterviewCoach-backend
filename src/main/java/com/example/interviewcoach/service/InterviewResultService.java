@@ -7,11 +7,14 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
 public class InterviewResultService {
+
+    private static final ZoneId APPLICATION_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final InterviewResultRepository interviewResultRepository;
 
@@ -28,7 +31,7 @@ public class InterviewResultService {
 
     public InterviewResult saveResult(InterviewResult result) {
 
-        result.setCompletedAt(LocalDateTime.now());
+        result.setCompletedAt(LocalDateTime.now(APPLICATION_ZONE));
 
         return interviewResultRepository.save(result);
     }
